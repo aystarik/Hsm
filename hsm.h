@@ -19,17 +19,22 @@
 // Helpers
 
 // A gadget from Herb Sutter's GotW #71 -- depends on SFINAE
-template<class D, class B>
+template <class D, class B>
 class IsDerivedFrom {
-    class Yes { char a[1]; };
-    class No  { char a[10]; };
-    static Yes Test(B*); // undefined
-    static No Test(...); // undefined
-public:
+    class Yes {
+        char a[1];
+    };
+    class No {
+        char a[10];
+    };
+    static Yes Test(B*);  // undefined
+    static No Test(...);  // undefined
+   public:
     enum { Res = sizeof(Test(static_cast<D*>(0))) == sizeof(Yes) ? 1 : 0 };
 };
 
-template<bool> class Bool {};
+template <bool>
+class Bool {};
 
 // Top State, Composite State and Leaf State
 
@@ -48,8 +53,11 @@ template <typename H, unsigned id, typename B = CompState<H, 0, TopState<H> > >
 struct CompState : B {
     typedef B Base;
     typedef CompState<H, id, Base> This;
-    template <typename X> void handle(H& h, const X& x) const { Base::handle(h, x); }
-    static void init(H&); // no implementation
+    template <typename X>
+    void handle(H& h, const X& x) const {
+        Base::handle(h, x);
+    }
+    static void init(H&);  // no implementation
     static void entry(H&) {}
     static void exit(H&) {}
 };
@@ -58,8 +66,9 @@ template <typename H>
 struct CompState<H, 0, TopState<H> > : TopState<H> {
     typedef TopState<H> Base;
     typedef CompState<H, 0, Base> This;
-    template <typename X> void handle(H&, const X&) const {}
-    static void init(H&); // no implementation
+    template <typename X>
+    void handle(H&, const X&) const {}
+    static void init(H&);  // no implementation
     static void entry(H&) {}
     static void exit(H&) {}
 };
@@ -69,13 +78,16 @@ struct LeafState : B {
     typedef H Host;
     typedef B Base;
     typedef LeafState<H, id, Base> This;
-    template <typename X> void handle(H& h, const X& x) const { Base::handle(h, x); }
+    template <typename X>
+    void handle(H& h, const X& x) const {
+        Base::handle(h, x);
+    }
     virtual void handler(H& h) const { handle(h, *this); }
     virtual unsigned getId() const { return id; }
-    static void init(H& h) { h.next(obj); } // don't specialize this
+    static void init(H& h) { h.next(obj); }  // don't specialize this
     static void entry(H&) {}
     static void exit(H&) {}
-    static const LeafState obj; // only the leaf states have instances
+    static const LeafState obj;  // only the leaf states have instances
 };
 
 template <typename H, unsigned id, typename B>
@@ -90,7 +102,7 @@ struct Tran {
     typedef typename C::Base CurrentBase;
     typedef typename S::Base SourceBase;
     typedef typename T::Base TargetBase;
-    enum { // work out when to terminate template recursion
+    enum {  // work out when to terminate template recursion
         eTB_CB = IsDerivedFrom<TargetBase, CurrentBase>::Res,
         eS_CB = IsDerivedFrom<S, CurrentBase>::Res,
         eS_C = IsDerivedFrom<S, C>::Res,
@@ -104,7 +116,7 @@ struct Tran {
     // template without specializing the outer one,
     // which is forbidden.
     static void exitActions(Host&, Bool<true>) {}
-    static void exitActions(Host&h, Bool<false>) {
+    static void exitActions(Host& h, Bool<false>) {
         C::exit(h);
         Tran<CurrentBase, S, T>::exitActions(h, Bool<exitStop>());
     }
@@ -113,9 +125,7 @@ struct Tran {
         Tran<CurrentBase, S, T>::entryActions(h, Bool<entryStop>());
         C::entry(h);
     }
-    Tran(Host & h) : host_(h) {
-        exitActions(host_, Bool<false>());
-    }
+    Tran(Host& h) : host_(h) { exitActions(host_, Bool<false>()); }
     ~Tran() {
         Tran<T, S, T>::entryActions(host_, Bool<false>());
         T::init(host_);
@@ -136,5 +146,4 @@ struct Init {
     Host& host_;
 };
 
-#endif // HSM_HPP
-
+#endif  // HSM_HPP
