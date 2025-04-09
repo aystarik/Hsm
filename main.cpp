@@ -3,62 +3,62 @@
 #include "hsm.h"
 
 /* Implements the following state machine from Miro Samek's
- * Practical Statecharts in C/C++
- *
- * |-init-----------------------------------------------------|
- * |                           s0                             |
- * |----------------------------------------------------------|
- * |                                                          |
- * |    |-init-----------|        |-------------------------| |
- * |    |       s1       |---c--->|            s2           | |
- * |    |----------------|<--c----|-------------------------| |
- * |    |                |        |                         | |
- * |<-d-| |-init-------| |        | |-init----------------| | |
- * |    | |     s11    |<----f----| |          s21        | | |
- * | /--| |------------| |        | |---------------------| | |
- * | a  | |            | |        | |                     | | |
- * | \->| |            |------g--------->|-init------|    | | |
- * |    | |____________| |        | |-b->|    s211   |---g--->|
- * |    |----b---^       |------f------->|           |    | | |
- * |    |________________|        | |<-d-|___________|<--e----|
- * |                              | |_____________________| | |
- * |                              |_________________________| |
- * |__________________________________________________________|
+                                                       |
+                                                       |
++-------------------------------------------------S----+------------------------------------------------------+
++------------------------------------------------------+------------------------------------------------------+
+|entry/                                                |                                                      |
+|exit/                                                 |                                                      |
+|I[foo]/foo=0                                          |                                                      |
+|                                                      |                                                      |
+|                              +------------------     |            +------------------S2-----------------+   |
+|                              |                       +----------->+-------------------------------------+   |
+|                              |                                    |entry/                               |   |
+|                              |                                    |exit/                                |   |
+|                              |                                    |I[!foo]/foo=1                        |   |
+|                     +--------+-----S1-------------+               |                                     |   |
+|                     +--------+--------------------+               |                                     |   |
+|        +------------+entry/  |                    +-------C------->                    +-------------   |   |
+|        |            |exit/   |          +------   |               |                    |                |   |
+|  D[!foo]/foo=1      |I/      |          |         <-------C-------+                    |                |   |
+|        |            |        |          |         |               |      +---------S21-+------+         |   |
+<--------+            |      +-v-----S11--v--+      |               |      +-------------+------+         |   |
+|                     |      +---------------+      |               |      |entry/       |      +-----+   |   |
+|                     |      |entry/         |      |               |      |exit/        |    | |     A   |   |
+|                     |      |exit/          |       <-------G-------+------+    +---S211-v-+  | |     |   |   |
+|                     |      |               |      |               |      |    +----------<--+ <-----+   |   |
+|                     +------>               +------+-------G-------+------>    |entry/    |    |         |   |
+|                     |      |               |      |               |      |    |exit/     <-B--+         |   |
++---------------------+------>               <------+-------F-------+      |    |          |    |         |   |
+|                     |      +----+------+---+      |               |      |    |          +-D-->         |   |
+|              +------+           |      |          +-------F-------+------+---->-----+----+    |         |   |
+|              |      |           |      |          |               |      |          |         |         |   |
+|              A      |   D[foo]/foo=0   H          |               |      |          H         |         |   |
+|              |      |   |              |          |               |      +----------+---------+         |   |
+|              +------>   |              |          |               |                 |                   |   |
+|                     +---v--------------+----------+               |                 |                   |   |
+|                                        |                          |                 |                   |   |
+|                                        |                          +-----------------+-------------------+   |
+|                                        |                                            |                       |
++----------------------------------------v--------------------------------------------v-----------------------+
+ * Practical Statecharts in C/C++ v2
  */
 
 class TestHSM;
 
 typedef CompState<TestHSM, 0> Top;
-typedef CompState<TestHSM, 1, Top> S0;
-typedef CompState<TestHSM, 2, S0> S1;
+typedef CompState<TestHSM, 1, Top> S;
+typedef CompState<TestHSM, 2, S> S1;
 typedef LeafState<TestHSM, 3, S1> S11;
-typedef CompState<TestHSM, 4, S0> S2;
+typedef CompState<TestHSM, 4, S> S2;
 typedef CompState<TestHSM, 5, S2> S21;
 typedef LeafState<TestHSM, 6, S21> S211;
 
-enum Signal { A_SIG, B_SIG, C_SIG, D_SIG, E_SIG, F_SIG, G_SIG, H_SIG };
-
-class TestHSM;
-
-#define HSMINIT(State, InitState)         \
-    template <>                           \
-    inline void State::init(TestHSM& h) { \
-        Init<InitState> i(h);             \
-        printf(#State "-INIT;");          \
-    }
-
-HSMINIT(Top, S0)
-HSMINIT(S0, S1)
-HSMINIT(S1, S11)
-HSMINIT(S2, S21)
-HSMINIT(S21, S211)
+enum Signal { A_SIG, B_SIG, C_SIG, D_SIG, E_SIG, F_SIG, G_SIG, H_SIG, I_SIG };
 
 class TestHSM {
    public:
-    TestHSM() {
-        foo(0);
-        Top::init(*this);
-    }
+    TestHSM();
     ~TestHSM() {}
     void next(const TopState<TestHSM>& state) { state_ = &state; }
     Signal getSig() const { return sig_; }
@@ -75,39 +75,54 @@ class TestHSM {
     int foo_;
 };
 
+template <>
+inline void Top::init(TestHSM& hsm) {
+    hsm.foo(0);
+    Tran<Top, Top, S2> t(hsm);
+    fprintf(stderr, "Top-INIT;");
+}
+
+TestHSM::TestHSM() {
+    Top::init(*this);
+}
+
+#define HSMINIT(State, InitState)           \
+    template <>                             \
+    inline void State::init(TestHSM& hsm) { \
+        Tran<State, State, InitState> i(hsm);     \
+        fprintf(stderr, #State "-INIT;");            \
+    }
+
+HSMINIT(S, S11)
+HSMINIT(S1, S11)
+HSMINIT(S2, S211)
+HSMINIT(S21, S211)
+
+static TestHSM test;
+
 bool testDispatch(char c) {
-    static TestHSM test;
-    if (c < 'a' || 'h' < c) {
+    if (c < 'a' || 'i' < c) {
         return false;
     }
-    printf("\nSignal<-%c: ", c);
+    fprintf(stderr, "%c: ", c);
     test.dispatch((Signal)(c - 'a'));
-    printf("\n");
+    fprintf(stderr, "\n");
     return true;
 }
 
 int main(int, char**) {
+    fprintf(stderr, "\n");
+    testDispatch('g');
+    testDispatch('i');
     testDispatch('a');
-    testDispatch('b');
     testDispatch('d');
+    testDispatch('d');
+    testDispatch('c');
     testDispatch('e');
-    testDispatch('i');
-    testDispatch('f');
-    testDispatch('i');
-    testDispatch('i');
-    testDispatch('f');
-    testDispatch('a');
-    testDispatch('b');
-    testDispatch('d');
-    testDispatch('d');
     testDispatch('e');
     testDispatch('g');
-    testDispatch('h');
-    testDispatch('h');
-    testDispatch('c');
-    testDispatch('g');
-    testDispatch('c');
-    testDispatch('c');
+    testDispatch('i');
+    testDispatch('i');
     return 0;
 }
 
@@ -116,12 +131,22 @@ int main(int, char**) {
     template <typename X> \
     inline void State::handle(TestHSM& h, const X& x) const
 
-HSMHANDLER(S0) {
+template <>
+template <typename X>
+inline void S::handle(TestHSM& h, const X& x) const {
     switch (h.getSig()) {
         case E_SIG: {
-            Tran<X, This, S211> t(h);
-            printf("s0-E;");
+            fprintf(stderr, "S-E;");
+            Tran<X, This, S11> t(h);
             return;
+        }
+        case I_SIG: {
+            if (h.foo()) {
+                h.foo(0);
+                fprintf(stderr, "S-I;");
+                return;
+            }
+            break;
         }
         default:
             break;
@@ -129,108 +154,142 @@ HSMHANDLER(S0) {
     return Base::handle(h, x);
 }
 
-HSMHANDLER(S1) {
+template <>
+template <typename X>
+inline void S1::handle(TestHSM& h, const X& x) const {
     switch (h.getSig()) {
         case A_SIG: {
+            fprintf(stderr, "S1-A;");
             Tran<X, This, S1> t(h);
-            printf("s1-A;");
             return;
         }
         case B_SIG: {
+            fprintf(stderr, "S1-B;");
             Tran<X, This, S11> t(h);
-            printf("s1-B;");
             return;
         }
         case C_SIG: {
+            fprintf(stderr, "S1-C;");
             Tran<X, This, S2> t(h);
-            printf("s1-C;");
             return;
         }
         case D_SIG: {
-            Tran<X, This, S0> t(h);
-            printf("s1-D;");
-            return;
-        }
-        case F_SIG: {
-            Tran<X, This, S211> t(h);
-            printf("s1-F;");
-            return;
-        }
-        default:
-            break;
-    }
-    return Base::handle(h, x);
-}
-
-HSMHANDLER(S11) {
-    switch (h.getSig()) {
-        case G_SIG: {
-            Tran<X, This, S211> t(h);
-            printf("s11-G;");
-            return;
-        }
-        case H_SIG:
-            if (h.foo()) {
-                printf("s11-H");
-                h.foo(0);
+            if (!h.foo()) {
+                h.foo(1);
+                fprintf(stderr, "S1-D;");
+                Tran<X, This, S> t(h);
                 return;
             }
             break;
+        }
+        case F_SIG: {
+            fprintf(stderr, "S1-F;");
+            Tran<X, This, S211> t(h);
+            return;
+        }
+        case I_SIG:
+            fprintf(stderr, "S1-I;");
+            return;
         default:
             break;
     }
     return Base::handle(h, x);
 }
 
-HSMHANDLER(S2) {
+template <>
+template <typename X>
+inline void S11::handle(TestHSM& h, const X& x) const {
+    switch (h.getSig()) {
+        case D_SIG: {
+            if (h.foo()) {
+                h.foo(0);
+                fprintf(stderr, "S11-D;");
+                Tran<X, This, S1> t(h);
+                return;
+            }
+            break;
+        }
+        case G_SIG: {
+            fprintf(stderr, "S11-G;");
+            Tran<X, This, S211> t(h);
+            return;
+        }
+        case H_SIG: {
+            fprintf(stderr, "S11-H;");
+            Tran<X, This, S> t(h);
+            return;
+        }
+        default:
+            break;
+    }
+    return Base::handle(h, x);
+}
+
+template <>
+template <typename X>
+inline void S2::handle(TestHSM& h, const X& x) const {
     switch (h.getSig()) {
         case C_SIG: {
+            fprintf(stderr, "S2-C;");
             Tran<X, This, S1> t(h);
-            printf("s2-C");
             return;
         }
         case F_SIG: {
+            fprintf(stderr, "S2-F;");
             Tran<X, This, S11> t(h);
-            printf("s2-F");
             return;
         }
-        default:
-            break;
-    }
-    return Base::handle(h, x);
-}
-
-HSMHANDLER(S21) {
-    switch (h.getSig()) {
-        case B_SIG: {
-            Tran<X, This, S211> t(h);
-            printf("s21-B;");
-            return;
-        }
-        case H_SIG:
+        case I_SIG: {
             if (!h.foo()) {
-                Tran<X, This, S21> t(h);
-                printf("s21-H;");
                 h.foo(1);
+                fprintf(stderr, "S2-I;");
                 return;
             }
             break;
+        }
         default:
             break;
     }
     return Base::handle(h, x);
 }
 
-HSMHANDLER(S211) {
+template <>
+template <typename X>
+inline void S21::handle(TestHSM& h, const X& x) const {
     switch (h.getSig()) {
-        case D_SIG: {
+        case A_SIG: {
+            fprintf(stderr, "S21-A;");
             Tran<X, This, S21> t(h);
-            printf("s211-D;");
+            return;
+        }
+        case B_SIG: {
+            fprintf(stderr, "s21-B;");
+            Tran<X, This, S211> t(h);
             return;
         }
         case G_SIG: {
-            Tran<X, This, S0> t(h);
-            printf("s211-G;");
+            fprintf(stderr, "S21-G;");
+            Tran<X, This, S1> t(h);
+            return;
+        }
+        default:
+            break;
+    }
+    return Base::handle(h, x);
+}
+
+template <>
+template <typename X>
+inline void S211::handle(TestHSM& h, const X& x) const {
+    switch (h.getSig()) {
+        case D_SIG: {
+            fprintf(stderr, "s211-D;");
+            Tran<X, This, S21> t(h);
+            return;
+        }
+        case H_SIG: {
+            fprintf(stderr, "s211-H;");
+            Tran<X, This, S> t(h);
             return;
         }
         default:
@@ -242,10 +301,10 @@ HSMHANDLER(S211) {
 #define HSMENTRY(State)                  \
     template <>                          \
     inline void State::entry(TestHSM&) { \
-        printf(#State "-ENTRY;");        \
+        fprintf(stderr, #State "-ENTRY;");        \
     }
 
-HSMENTRY(S0)
+HSMENTRY(S)
 HSMENTRY(S1)
 HSMENTRY(S11)
 HSMENTRY(S2)
@@ -255,10 +314,10 @@ HSMENTRY(S211)
 #define HSMEXIT(State)                  \
     template <>                         \
     inline void State::exit(TestHSM&) { \
-        printf(#State "-EXIT;");        \
+        fprintf(stderr, #State "-EXIT;");        \
     }
 
-HSMEXIT(S0)
+HSMEXIT(S)
 HSMEXIT(S1)
 HSMEXIT(S11)
 HSMEXIT(S2)
