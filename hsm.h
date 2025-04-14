@@ -25,6 +25,8 @@ struct TopState {
     using Base = void;
     virtual void handler(Host&) const = 0;
     virtual unsigned getId() const = 0;
+    protected: // To forbit explicit instance creation.
+    TopState() = default;
 };
 
 template <typename _Host, unsigned id, typename _Base>
@@ -41,6 +43,8 @@ struct CompState : _Base {
     static void init(_Host&);  // no implementation
     static void entry(_Host&) {}
     static void exit(_Host&) {}
+    protected:
+    CompState() = default;
 };
 
 template <typename _Host>
@@ -52,6 +56,8 @@ struct CompState<_Host, 0, TopState<_Host> > : TopState<_Host> {
     static void init(_Host&);  // no implementation
     static void entry(_Host&) {}
     static void exit(_Host&) {}
+    protected:
+    CompState() = default;
 };
 
 template <typename _Host, unsigned id, typename _Base = CompState<_Host, 0, TopState<_Host> > >
@@ -69,6 +75,8 @@ struct LeafState final : _Base {
     static void entry(Host&) {}
     static void exit(Host&) {}
     static inline const LeafState obj{};  // only the leaf states have instances
+    protected:
+    LeafState() = default;
 };
 
 // Transition Object
@@ -97,11 +105,6 @@ struct Tran {
         entryStop = eS_C || (eS_CB && (!eC_S || eT_C))
     };
 
-    // We use overloading to stop recursion.
-    // The more natural template specialization
-    // method would require to specialize the inner
-    // template without specializing the outer one,
-    // which is forbidden.
     template <bool ExitStop>
     static void exitActions(Host &hsm) {
         if constexpr (!ExitStop) {
