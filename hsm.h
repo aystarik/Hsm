@@ -63,20 +63,15 @@ struct LeafState : _Base {
     void handle(Host& h, const X& x) const {
         Base::handle(h, x);
     }
-    virtual void handler(Host& hsm) const { handle(hsm, *this); }
-    virtual unsigned getId() const { return id; }
+    virtual void handler(Host& hsm) const override { handle(hsm, *this); }
+    virtual unsigned getId() const override { return id; }
     static void init(Host& hsm) { hsm.next(obj); }  // don't specialize this
     static void entry(Host&) {}
     static void exit(Host&) {}
-    static const LeafState obj;  // only the leaf states have instances
+    static inline const LeafState obj{};  // only the leaf states have instances
 };
 
-template <typename _Host, unsigned id, typename _Base>
-const LeafState<_Host, id, _Base> LeafState<_Host, id, _Base>::obj;
-
-
 // Transition Object
-
 template <typename _Current, typename _Source, typename _Target>
 struct Tran {
     using Host = typename _Current::Host;
