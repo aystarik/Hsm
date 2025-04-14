@@ -15,6 +15,8 @@
  * never instantiated.
  */
 
+#include <type_traits>
+
 // Top State, Composite State and Leaf State
 
 template <typename _Host>
@@ -72,47 +74,28 @@ struct LeafState : _Base {
 template <typename _Host, unsigned id, typename _Base>
 const LeafState<_Host, id, _Base> LeafState<_Host, id, _Base>::obj;
 
-// Helpers
-
-// A gadget from Herb Sutter's GotW #71 -- depends on SFINAE
-template <class _Derived, class _Base>
-class IsDerivedFrom {
-    class Yes {
-        char a[1];
-    };
-    class No {
-        char a[10];
-    };
-    static Yes Test(_Base *);  // undefined
-    static No Test(...);  // undefined
-   public:
-    enum { Is = sizeof(Test(static_cast<_Derived *>(0))) == sizeof(Yes) ? 1 : 0 };
-};
-
-template <bool>
-class Bool {};
 
 // Transition Object
 
 template <typename _Current, typename _Source, typename _Target>
 struct Tran {
-    typedef typename _Current::Host Host;
+    using Host = typename _Current::Host;
+    using CurrentBase = typename _Current::Base;
+    using SourceBase = typename _Source::Base;
+    using TargetBase = typename _Target::Base;
 
-    typedef typename _Current::Base CurrentBase;
-    typedef typename _Source::Base SourceBase;
-    typedef typename _Target::Base TargetBase;
     enum {  // work out when to terminate template recursion
-        eTB_CB = IsDerivedFrom<TargetBase, CurrentBase>::Is,
-        eT_CB = IsDerivedFrom<_Target, CurrentBase>::Is,
+        eTB_CB = std::is_base_of_v<CurrentBase, TargetBase>,
+        eT_CB = std::is_base_of_v<CurrentBase, _Target>,
 
-        eT_C = IsDerivedFrom<_Target, _Current>::Is,
-        eT_S = IsDerivedFrom<_Target, _Source>::Is,
-        eS_T = IsDerivedFrom<_Source, _Target>::Is,
-        eSB_T = IsDerivedFrom<SourceBase, _Target>::Is,
+        eT_C = std::is_base_of_v<_Current, _Target>,
+        eT_S = std::is_base_of_v<_Source, _Target>,
+        eS_T = std::is_base_of_v<_Target, _Source>,
+        eSB_T = std::is_base_of_v<_Target, SourceBase>,
 
-        eS_C = IsDerivedFrom<_Source, _Current>::Is,
-        eC_S = IsDerivedFrom<_Current, _Source>::Is,
-        eS_CB = IsDerivedFrom<_Source, CurrentBase>::Is,
+        eS_C = std::is_base_of_v<_Current, _Source>,
+        eC_S = std::is_base_of_v<_Source, _Current>,
+        eS_CB = std::is_base_of_v<CurrentBase, _Source>,
 
         exitStop = (eTB_CB && eS_CB) || (eSB_T && eT_CB),
 
@@ -124,25 +107,28 @@ struct Tran {
     // method would require to specialize the inner
     // template without specializing the outer one,
     // which is forbidden.
-
-    static void exitActions(Host& hsm, Bool<true>) {}
-    static void exitActions(Host& hsm, Bool<false>) {
-        _Current::exit(hsm);
-        Tran<CurrentBase, _Source, _Target>::exitActions(hsm, Bool<exitStop>());
+    template <bool ExitStop>
+    static void exitActions(Host &hsm) {
+        if constexpr (!ExitStop) {
+          _Current::exit(hsm);
+          Tran<CurrentBase, _Source, _Target>::template exitActions<exitStop>(hsm);
+        }
     }
 
     Tran(Host& hsm) : host_(hsm) {
-        exitActions(host_, Bool<eT_S && eS_C>());
+        exitActions<eT_S && eS_C>(host_);
     }
 
-    static void entryActions(Host& hsm, Bool<true>) {}
-    static void entryActions(Host& hsm, Bool<false>) {
-        Tran<CurrentBase, _Source, _Target>::entryActions(hsm, Bool<entryStop>());
-        _Current::entry(hsm);
+    template <bool EntryStop>
+    static void entryActions(Host &hsm) {
+        if constexpr (!EntryStop) {
+          Tran<CurrentBase, _Source, _Target>::template entryActions<entryStop>(hsm);
+          _Current::entry(hsm);
+        }
     }
 
     ~Tran() {
-        Tran<_Target, _Source, _Target>::entryActions(host_, Bool<eS_T>());
+        Tran<_Target, _Source, _Target>::template entryActions<eS_T>(host_);
         _Target::init(host_);
     }
 
