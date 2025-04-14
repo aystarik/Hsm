@@ -19,8 +19,8 @@
 
 template <typename _Host>
 struct TopState {
-    typedef _Host Host;
-    typedef void Base;
+    using Host = _Host;
+    using Base = void;
     virtual void handler(Host&) const = 0;
     virtual unsigned getId() const = 0;
 };
@@ -30,8 +30,8 @@ struct CompState;
 
 template <typename _Host, unsigned id, typename _Base = CompState<_Host, 0, TopState<_Host> > >
 struct CompState : _Base {
-    typedef _Base Base;
-    typedef CompState<_Host, id, Base> This;
+    using Base = _Base;
+    using This = CompState<_Host, id, Base>;
     template <typename X>
     void handle(_Host& h, const X& x) const {
         Base::handle(h, x);
@@ -43,8 +43,8 @@ struct CompState : _Base {
 
 template <typename _Host>
 struct CompState<_Host, 0, TopState<_Host> > : TopState<_Host> {
-    typedef TopState<_Host> Base;
-    typedef CompState<_Host, 0, Base> This;
+    using Base = TopState<_Host>;
+    using This = CompState<_Host, 0, Base>;
     template <typename X>
     void handle(_Host&, const X&) const {}
     static void init(_Host&);  // no implementation
@@ -54,9 +54,9 @@ struct CompState<_Host, 0, TopState<_Host> > : TopState<_Host> {
 
 template <typename _Host, unsigned id, typename _Base = CompState<_Host, 0, TopState<_Host> > >
 struct LeafState : _Base {
-    typedef _Host Host;
-    typedef _Base Base;
-    typedef LeafState<Host, id, Base> This;
+    using Host = _Host;
+    using Base = _Base;
+    using This = LeafState<Host, id, Base>;
     template <typename X>
     void handle(Host& h, const X& x) const {
         Base::handle(h, x);
