@@ -46,13 +46,13 @@
 
 class TestHSM;
 
-typedef CompState<TestHSM, 0> Top;
-typedef CompState<TestHSM, 1, Top> S;
-typedef CompState<TestHSM, 2, S> S1;
-typedef LeafState<TestHSM, 3, S1> S11;
-typedef CompState<TestHSM, 4, S> S2;
-typedef CompState<TestHSM, 5, S2> S21;
-typedef LeafState<TestHSM, 6, S21> S211;
+using Top  = CompState<TestHSM, 0>;
+using S    = CompState<TestHSM, 1, Top>;
+using S1   = CompState<TestHSM, 2, S>;
+using S11  = LeafState<TestHSM, 3, S1>;
+using S2   = CompState<TestHSM, 4, S>;
+using S21  = CompState<TestHSM, 5, S2>;
+using S211 = LeafState<TestHSM, 6, S21>;
 
 enum Signal { A_SIG, B_SIG, C_SIG, D_SIG, E_SIG, F_SIG, G_SIG, H_SIG, I_SIG };
 
@@ -133,7 +133,7 @@ int main(int, char**) {
 
 template <>
 template <typename X>
-inline void S::handle(TestHSM& h, const X& x) const {
+inline void S::handle(TestHSM& h, const X& x) {
     switch (h.getSig()) {
         case E_SIG: {
             fprintf(stderr, "S-E;");
@@ -156,7 +156,7 @@ inline void S::handle(TestHSM& h, const X& x) const {
 
 template <>
 template <typename X>
-inline void S1::handle(TestHSM& h, const X& x) const {
+inline void S1::handle(TestHSM& h, const X& x) {
     switch (h.getSig()) {
         case A_SIG: {
             fprintf(stderr, "S1-A;");
@@ -198,7 +198,7 @@ inline void S1::handle(TestHSM& h, const X& x) const {
 
 template <>
 template <typename X>
-inline void S11::handle(TestHSM& h, const X& x) const {
+inline void S11::handle(TestHSM& h, const X& x) {
     switch (h.getSig()) {
         case D_SIG: {
             if (h.foo()) {
@@ -227,7 +227,7 @@ inline void S11::handle(TestHSM& h, const X& x) const {
 
 template <>
 template <typename X>
-inline void S2::handle(TestHSM& h, const X& x) const {
+inline void S2::handle(TestHSM& h, const X& x) {
     switch (h.getSig()) {
         case C_SIG: {
             fprintf(stderr, "S2-C;");
@@ -255,7 +255,7 @@ inline void S2::handle(TestHSM& h, const X& x) const {
 
 template <>
 template <typename X>
-inline void S21::handle(TestHSM& h, const X& x) const {
+inline void S21::handle(TestHSM& h, const X& x) {
     switch (h.getSig()) {
         case A_SIG: {
             fprintf(stderr, "S21-A;");
@@ -280,7 +280,7 @@ inline void S21::handle(TestHSM& h, const X& x) const {
 
 template <>
 template <typename X>
-inline void S211::handle(TestHSM& h, const X& x) const {
+inline void S211::handle(TestHSM& h, const X& x) {
     switch (h.getSig()) {
         case D_SIG: {
             fprintf(stderr, "s211-D;");

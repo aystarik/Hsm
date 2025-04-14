@@ -35,7 +35,7 @@ struct CompState : _Base {
     using Base = _Base;
     using This = CompState<_Host, id, Base>;
     template <typename X>
-    void handle(_Host& h, const X& x) const {
+    static void handle(_Host& h, const X& x) {
         Base::handle(h, x);
     }
     static void init(_Host&);  // no implementation
@@ -48,23 +48,23 @@ struct CompState<_Host, 0, TopState<_Host> > : TopState<_Host> {
     using Base = TopState<_Host>;
     using This = CompState<_Host, 0, Base>;
     template <typename X>
-    void handle(_Host&, const X&) const {}
+    static void handle(_Host&, const X&) {}
     static void init(_Host&);  // no implementation
     static void entry(_Host&) {}
     static void exit(_Host&) {}
 };
 
 template <typename _Host, unsigned id, typename _Base = CompState<_Host, 0, TopState<_Host> > >
-struct LeafState : _Base {
+struct LeafState final : _Base {
     using Host = _Host;
     using Base = _Base;
     using This = LeafState<Host, id, Base>;
     template <typename X>
-    void handle(Host& h, const X& x) const {
+    static void handle(Host& h, const X& x) {
         Base::handle(h, x);
     }
-    virtual void handler(Host& hsm) const override { handle(hsm, *this); }
-    virtual unsigned getId() const override { return id; }
+    void handler(Host& hsm) const override { handle(hsm, obj); }
+    unsigned getId() const override { return id; }
     static void init(Host& hsm) { hsm.next(obj); }  // don't specialize this
     static void entry(Host&) {}
     static void exit(Host&) {}
