@@ -46,13 +46,19 @@
 
 class TestHSM;
 
-using Top  = CompState<TestHSM, 0>;
-using S    = CompState<TestHSM, 1, Top>;
-using S1   = CompState<TestHSM, 2, S>;
-using S11  = LeafState<TestHSM, 3, S1>;
-using S2   = CompState<TestHSM, 4, S>;
-using S21  = CompState<TestHSM, 5, S2>;
-using S211 = LeafState<TestHSM, 6, S21>;
+template <int Id = 0, typename _Base = TopState<TestHSM>>
+using HSMComp = CompState<TestHSM, Id, _Base>;
+
+template <int Id, typename _Base>
+using HSMLeaf = LeafState<TestHSM, Id, _Base>;
+
+using Top  = HSMComp<>;
+using S    = HSMComp<1, Top>;
+using S1   = HSMComp<2, S>;
+using S11  = HSMLeaf<3, S1>;
+using S2   = HSMComp<4, S>;
+using S21  = HSMComp<5, S2>;
+using S211 = HSMLeaf<6, S21>;
 
 enum Signal { A_SIG, B_SIG, C_SIG, D_SIG, E_SIG, F_SIG, G_SIG, H_SIG, I_SIG };
 
